@@ -1,0 +1,67 @@
+# Docker Compose Development Environment
+# Use this for local development with hot-reload
+
+version: '3.8'
+
+services:
+  # Backend Service (Development)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: travelnest-backend-dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - HOST=0.0.0.0
+      - DATABASE_PATH=/app/database/travelnest.db
+      - JWT_SECRET=${JWT_SECRET:-dev_jwt_secret_change_me}
+      - JWT_EXPIRES_IN=7d
+      - CORS_ORIGIN=http://localhost:5173
+      - UPLOAD_PATH=/app/uploads
+      - MAX_FILE_SIZE=5242880
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - backend-db:/app/database
+      - backend-uploads:/app/uploads
+    networks:
+      - travelnest-network
+    command: npm run dev
+
+  # Frontend Service (Development)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: build
+    container_name: travelnest-frontend-dev
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3000/api
+      - VITE_SOCKET_URL=http://localhost:3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - travelnest-network
+    depends_on:
+      - backend
+    command: npm run dev -- --host
+
+volumes:
+  backend-db:
+    driver: local
+  backend-uploads:
+    driver: local
+
+networks:
+  travelnest-network:
+    driver: bridge
