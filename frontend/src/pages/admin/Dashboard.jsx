@@ -55,7 +55,6 @@ const Dashboard = () => {
     { label: 'Active Hosts', value: stats?.totalHosts || 0, change: '+8%', icon: Home, color: 'green' },
     { label: 'Travelers', value: stats?.totalTravelers || 0, change: '+15%', icon: Users, color: 'purple' },
     { label: 'Total Requests', value: stats?.totalRequests || 0, change: '+5%', icon: TrendingUp, color: 'orange' },
-    { label: 'Pending KYC', value: stats?.pendingKyc || 0, change: '-3%', icon: FileText, color: 'yellow' },
   ];
 
   return (
@@ -90,29 +89,6 @@ const Dashboard = () => {
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activities</h2>
           <div className="space-y-4">
             <p className="text-sm text-gray-500">No recent activities</p>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'Review KYC', icon: FileText, color: 'blue' },
-              { label: 'Check Reports', icon: AlertCircle, color: 'red' },
-              { label: 'Send Broadcast', icon: MessageSquare, color: 'green' },
-              { label: 'View Analytics', icon: TrendingUp, color: 'purple' },
-            ].map((action, idx) => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={idx}
-                  className={`p-4 border-2 border-gray-200 rounded-lg hover:border-${action.color}-500 hover:bg-${action.color}-50 transition-all group`}
-                >
-                  <Icon className={`w-6 h-6 text-gray-600 group-hover:text-${action.color}-600 mx-auto mb-2`} />
-                  <p className="text-sm font-medium text-gray-900">{action.label}</p>
-                </button>
-              );
-            })}
           </div>
         </div>
       </div>

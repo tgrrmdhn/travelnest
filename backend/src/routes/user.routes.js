@@ -33,4 +33,9 @@ router.put(
 router.post('/avatar', upload.single('avatar'), userController.uploadAvatar);
 router.post('/kyc', upload.single('kyc_document'), userController.uploadKycDocument);
 
+router.get('/notifications', userController.getNotifications);
+router.put('/notifications/:notificationId/read', userController.markNotificationAsRead);
+router.put('/notifications/read-all', userController.markAllNotificationsAsRead);
+router.get('/notifications/unread-count', userController.getUnreadNotificationCount);
+
 export default router;

@@ -42,6 +42,22 @@ export const ReviewModel = {
     `).all(userId);
   },
 
+  // Get reviews by reviewer (reviews written by this user)
+  findByReviewerId: (reviewerId) => {
+    return db.prepare(`
+      SELECT r.*,
+        reviewee.name as reviewee_name,
+        req.host_id,
+        h.title as property_title
+      FROM reviews r
+      JOIN users reviewee ON r.reviewee_id = reviewee.id
+      LEFT JOIN requests req ON r.request_id = req.id
+      LEFT JOIN hosts h ON req.host_id = h.id
+      WHERE r.reviewer_id = ?
+      ORDER BY r.created_at DESC
+    `).all(reviewerId);
+  },
+
   // Get average rating for user
   getAverageRating: (userId) => {
     return db.prepare(`

@@ -78,6 +78,8 @@ export const initDatabase = () => {
       guests INTEGER NOT NULL,
       message TEXT,
       status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'rejected', 'cancelled', 'completed')),
+      checkout_requested INTEGER DEFAULT 0,
+      checkout_verified INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (traveler_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -152,6 +154,7 @@ export const initDatabase = () => {
       action TEXT NOT NULL,
       details TEXT,
       ip_address TEXT,
+      user_agent TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
     )

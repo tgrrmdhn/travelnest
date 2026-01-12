@@ -78,6 +78,22 @@ export const ChatModel = {
     `).get(userId).total;
   },
 
+  // Get unread count by user (sender)
+  getUnreadCountByUser: (userId) => {
+    const results = db.prepare(`
+      SELECT sender_id, COUNT(*) as count FROM chats
+      WHERE receiver_id = ? AND is_read = 0
+      GROUP BY sender_id
+    `).all(userId);
+    
+    // Convert to object { senderId: count }
+    const unreadByUser = {};
+    results.forEach(row => {
+      unreadByUser[row.sender_id] = row.count;
+    });
+    return unreadByUser;
+  },
+
   // Delete message
   delete: (id) => {
     return db.prepare('DELETE FROM chats WHERE id = ?').run(id);

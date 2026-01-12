@@ -11,16 +11,17 @@ router.use(authenticate);
 router.post(
   '/send',
   [
-    body('receiver_id').isInt().withMessage('Invalid receiver ID'),
-    body('message').notEmpty().withMessage('Message is required'),
+    body('receiver_id').isInt({ min: 1 }).withMessage('Invalid receiver ID'),
+    body('message').trim().notEmpty().withMessage('Message is required')
+      .isLength({ min: 1, max: 2000 }).withMessage('Message must be 1-2000 characters'),
     validate,
   ],
   chatController.sendMessage
 );
 
 router.get('/conversations', chatController.getConversations);
-router.get('/conversations/:userId', chatController.getConversation);
-router.put('/conversations/:userId/read', chatController.markAsRead);
-router.get('/unread-count', chatController.getUnreadCount);
+router.get('/conversation/:userId', chatController.getConversation);
+router.put('/read/:userId', chatController.markAsRead);
+router.get('/unread', chatController.getUnreadCount);
 
 export default router;

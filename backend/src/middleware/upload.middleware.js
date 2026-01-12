@@ -47,7 +47,19 @@ const storage = multer.diskStorage({
 
 // File filter
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+  // For property photos, only allow images
+  if (file.fieldname === 'photos') {
+    const allowedImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (allowedImageTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only JPEG, PNG, and WebP images are allowed for property photos'), false);
+    }
+    return;
+  }
+  
+  // For other uploads (avatar, kyc), allow images and PDFs
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
 
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);

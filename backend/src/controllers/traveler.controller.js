@@ -1,18 +1,27 @@
 import { HostModel } from '../models/host.model.js';
 import { RequestModel } from '../models/request.model.js';
 import { ReviewModel } from '../models/review.model.js';
+import { NotificationModel } from '../models/notification.model.js';
+import { sanitizeObject, sanitizeString, sanitizeNumber, sanitizeDate } from '../utils/sanitizer.js';
 
 export const searchHosts = async (req, res, next) => {
   try {
-    const { city, country, max_guests } = req.query;
+    // Sanitize search parameters
+    const city = req.query.city ? sanitizeString(req.query.city) : null;
+    const country = req.query.country ? sanitizeString(req.query.country) : null;
+    const max_guests = req.query.max_guests ? sanitizeNumber(req.query.max_guests, { min: 1 }) : null;
 
     const hosts = HostModel.search({ city, country, max_guests });
+
+    // Log for admin monitoring
+    console.log(`[ADMIN LOG] Host search - User ID: ${req.user.id}, Filters: city=${city}, country=${country}, max_guests=${max_guests}, Results: ${hosts.length}`);
 
     res.json({
       success: true,
       data: { hosts },
     });
   } catch (error) {
+    console.error(`[ADMIN LOG] Error searching hosts - User ID: ${req.user.id}, Error: ${error.message}`);
     next(error);
   }
 };
@@ -34,6 +43,10 @@ export const getHostDetails = async (req, res, next) => {
     const reviews = ReviewModel.findByUserId(host.user_id);
     const ratingData = ReviewModel.getAverageRating(host.user_id);
 
+    console.log(`📊 Host ${hostId} rating data:`, ratingData);
+    console.log(`📝 Reviews count:`, reviews.length);
+
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
     res.json({
       success: true,
       data: { 
@@ -50,7 +63,9 @@ export const getHostDetails = async (req, res, next) => {
 
 export const createRequest = async (req, res, next) => {
   try {
-    const { host_id, check_in, check_out, guests, message } = req.body;
+    // Sanitize inputs
+    const sanitizedBody = sanitizeObject(req.body);
+    const { host_id, check_in, check_out, guests, message } = sanitizedBody;
 
     const host = HostModel.findById(host_id);
 
@@ -61,23 +76,47 @@ export const createRequest = async (req, res, next) => {
       });
     }
 
+    // Sanitize and validate dates
+    const sanitizedCheckIn = sanitizeDate(check_in);
+    const sanitizedCheckOut = sanitizeDate(check_out);
+    
+    if (!sanitizedCheckIn || !sanitizedCheckOut) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid check-in or check-out date',
+      });
+    }
+
     const result = RequestModel.create({
       traveler_id: req.user.id,
-      host_id,
-      check_in,
-      check_out,
-      guests,
-      message,
+      host_id: sanitizeNumber(host_id, { min: 1 }),
+      check_in: sanitizedCheckIn,
+      check_out: sanitizedCheckOut,
+      guests: sanitizeNumber(guests, { min: 1 }),
+      message: message ? sanitizeString(message) : null,
     });
 
     const request = RequestModel.findById(result.lastInsertRowid);
 
+    // Create notification for host
+    NotificationModel.create({
+      user_id: host.user_id,
+      title: 'New Booking Request',
+      message: `You have a new stay request from ${req.user.name} for ${guests} guest(s)`,
+      type: 'new_request',
+      is_read: 0
+    });
+
+    // Log for admin monitoring
+    console.log(`[ADMIN LOG] Request created - Request ID: ${request.id}, Traveler ID: ${req.user.id}, Host ID: ${host_id}, Check-in: ${sanitizedCheckIn}, Check-out: ${sanitizedCheckOut}`);
+
     res.status(201).json({
       success: true,
-      message: 'Request sent successfully',
+      message: 'Request sent successfully. Host will be notified.',
       data: { request },
     });
   } catch (error) {
+    console.error(`[ADMIN LOG] Error creating request - User ID: ${req.user.id}, Error: ${error.message}`);
     next(error);
   }
 };
@@ -86,6 +125,8 @@ export const getRequests = async (req, res, next) => {
   try {
     const status = req.query.status;
     const requests = RequestModel.findByTravelerId(req.user.id, status);
+
+    console.log(`📋 Traveler ${req.user.id} requests:`, JSON.stringify(requests, null, 2));
 
     res.json({
       success: true,
@@ -180,6 +221,20 @@ export const createReview = async (req, res, next) => {
       success: true,
       message: 'Review submitted successfully',
       data: { review },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getReviews = async (req, res, next) => {
+  try {
+    // Get reviews written by this traveler (as reviewer)
+    const reviews = ReviewModel.findByReviewerId(req.user.id);
+
+    res.json({
+      success: true,
+      data: { reviews },
     });
   } catch (error) {
     next(error);

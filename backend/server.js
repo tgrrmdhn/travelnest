@@ -5,12 +5,11 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import { createServer } from 'http';
-import { Server } from 'socket.io';
 
 // Import configurations
 import { initDatabase } from './src/config/database.js';
 import { errorHandler } from './src/middleware/error.middleware.js';
+import { logActivity } from './src/middleware/activityLogger.middleware.js';
 import rateLimiter from './src/middleware/rateLimiter.middleware.js';
 
 // Import routes
@@ -19,8 +18,8 @@ import userRoutes from './src/routes/user.routes.js';
 import hostRoutes from './src/routes/host.routes.js';
 import travelerRoutes from './src/routes/traveler.routes.js';
 import adminRoutes from './src/routes/admin.routes.js';
-import chatRoutes from './src/routes/chat.routes.js';
 import reviewRoutes from './src/routes/review.routes.js';
+// Chat feature removed
 
 // Load environment variables
 dotenv.config();
@@ -30,7 +29,6 @@ const __dirname = dirname(__filename);
 
 // Initialize Express app
 const app = express();
-const httpServer = createServer(app);
 
 // Log ALL requests at the earliest possible point
 app.use((req, res, next) => {
@@ -38,16 +36,24 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize Socket.IO
-const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-    methods: ['GET', 'POST'],
-  },
-});
+// Chat and Socket.IO removed
 
 // Middleware
-app.use(helmet()); // Security headers
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true,
+  },
+})); // Enhanced security headers
 app.use(cors({
   origin: function(origin, callback) {
     try {
@@ -86,8 +92,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// Static files for uploads
-app.use('/uploads', express.static(join(__dirname, 'uploads')));
+// Static files for uploads (with proper CORS)
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Cache-Control', 'public, max-age=31536000');
+  next();
+}, express.static(join(__dirname, 'uploads')));
+
+// Activity logging middleware (for admin monitoring)
+app.use('/api/', logActivity);
 
 // Rate limiting
 app.use('/api/', rateLimiter);
@@ -126,26 +139,8 @@ app.use('/api/user', userRoutes);
 app.use('/api/host', hostRoutes);
 app.use('/api/traveler', travelerRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/chat', chatRoutes);
 app.use('/api/review', reviewRoutes);
-
-// Socket.IO for real-time chat
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  socket.on('join_room', (roomId) => {
-    socket.join(roomId);
-    console.log(`User ${socket.id} joined room ${roomId}`);
-  });
-
-  socket.on('send_message', (data) => {
-    io.to(data.roomId).emit('receive_message', data);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-});
+// Chat routes removed
 
 // Serve static frontend files
 app.use(express.static(join(__dirname, '../frontend/dist')));
@@ -177,11 +172,12 @@ try {
   initDatabase();
   console.log('✅ Database initialized successfully');
 
+  // Chat feature removed - Socket.IO setup removed
+
   // Start server
-  httpServer.listen(PORT, HOST, () => {
+  app.listen(PORT, HOST, () => {
     console.log(`🚀 Server running on http://${HOST}:${PORT}`);
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔌 Socket.IO ready for real-time connections`);
   });
 } catch (error) {
   console.error('❌ Failed to start server:', error);
@@ -191,10 +187,7 @@ try {
 // Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, closing server gracefully...');
-  httpServer.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
+  process.exit(0);
 });
 
 // Catch all uncaught exceptions

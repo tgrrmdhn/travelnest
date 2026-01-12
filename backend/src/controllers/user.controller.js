@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { UserModel } from '../models/user.model.js';
+import { NotificationModel } from '../models/notification.model.js';
 
 export const getProfile = async (req, res, next) => {
   try {
@@ -111,6 +112,61 @@ export const uploadKycDocument = async (req, res, next) => {
       success: true,
       message: 'KYC document uploaded successfully',
       data: { document: documentPath },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getNotifications = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const notifications = NotificationModel.findByUserId(req.user.id, limit);
+
+    res.json({
+      success: true,
+      data: { notifications },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markNotificationAsRead = async (req, res, next) => {
+  try {
+    const { notificationId } = req.params;
+
+    NotificationModel.markAsRead(notificationId);
+
+    res.json({
+      success: true,
+      message: 'Notification marked as read',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const markAllNotificationsAsRead = async (req, res, next) => {
+  try {
+    NotificationModel.markAllAsRead(req.user.id);
+
+    res.json({
+      success: true,
+      message: 'All notifications marked as read',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUnreadNotificationCount = async (req, res, next) => {
+  try {
+    const count = NotificationModel.getUnreadCount(req.user.id);
+
+    res.json({
+      success: true,
+      data: { count },
     });
   } catch (error) {
     next(error);

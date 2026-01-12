@@ -38,8 +38,9 @@ export const RequestModel = {
   findByTravelerId: (travelerId, status = null) => {
     let query = `
       SELECT r.*,
-        u.name as host_name, u.email as host_email,
-        h.title as property_title, h.city, h.country
+        u.id as host_user_id, u.name as host_name, u.email as host_email,
+        h.title as property_title, h.city, h.country,
+        (SELECT COUNT(*) FROM reviews WHERE request_id = r.id) > 0 as has_review
       FROM requests r
       JOIN hosts h ON r.host_id = h.id
       JOIN users u ON h.user_id = u.id
@@ -111,5 +112,49 @@ export const RequestModel = {
   // Delete request
   delete: (id) => {
     return db.prepare('DELETE FROM requests WHERE id = ?').run(id);
+  },
+
+  // Get bookings (accepted requests) for calendar
+  getBookingsByHostId: (hostId) => {
+    return db.prepare(`
+      SELECT r.id, r.check_in, r.check_out, r.guests,
+        t.name as traveler_name, t.email as traveler_email, t.avatar as traveler_avatar,
+        h.title as property_title
+      FROM requests r
+      JOIN users t ON r.traveler_id = t.id
+      JOIN hosts h ON r.host_id = h.id
+      WHERE h.id = ? AND r.status = 'accepted'
+      ORDER BY r.check_in ASC
+    `).all(hostId);
+  },
+
+  // Request checkout
+  requestCheckout: (id) => {
+    return db.prepare(`
+      UPDATE requests 
+      SET checkout_requested = 1, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `).run(id);
+  },
+
+  // Verify checkout
+  verifyCheckout: (id) => {
+    return db.prepare(`
+      UPDATE requests 
+      SET checkout_verified = 1, status = 'completed', updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ?
+    `).run(id);
+  },
+
+  // Check if request can be reviewed (checkout verified and not yet reviewed)
+  canBeReviewed: (requestId, reviewerId) => {
+    const request = db.prepare(`
+      SELECT r.*, 
+        (SELECT COUNT(*) FROM reviews WHERE request_id = ? AND reviewer_id = ?) as review_count
+      FROM requests r
+      WHERE r.id = ? AND r.checkout_verified = 1
+    `).get(requestId, reviewerId, requestId);
+    
+    return request && request.review_count === 0;
   },
 };

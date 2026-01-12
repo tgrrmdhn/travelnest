@@ -46,6 +46,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (userData, token) => {
     try {
+      console.log('AuthContext: Setting user and token', userData);
+      
       // Save to localStorage
       localStorage.setItem('user', JSON.stringify(userData));
       localStorage.setItem('token', token);
@@ -54,8 +56,11 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       setIsAuthenticated(true);
       
+      console.log('AuthContext: User set, isAuthenticated set to true');
+      
       return { success: true };
     } catch (error) {
+      console.error('AuthContext: Login error', error);
       return { 
         success: false, 
         message: error.message 

@@ -13,22 +13,4 @@ router.get('/users', adminController.getUsers);
 router.put('/users/:userId/ban', adminController.banUser);
 router.put('/users/:userId/unban', adminController.unbanUser);
 
-router.get('/kyc', adminController.getKycRequests);
-router.put('/kyc/:userId/approve', adminController.approveKyc);
-router.put('/kyc/:userId/reject', adminController.rejectKyc);
-
-router.get('/reports', adminController.getReports);
-router.get('/activity-logs', adminController.getActivityLogs);
-
-router.post(
-  '/broadcast',
-  [
-    body('title').notEmpty().withMessage('Title is required'),
-    body('message').notEmpty().withMessage('Message is required'),
-    body('type').notEmpty().withMessage('Type is required'),
-    validate,
-  ],
-  adminController.sendBroadcast
-);
-
 export default router;
