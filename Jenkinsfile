@@ -8,8 +8,8 @@ pipeline {
         
         // Application details
         APP_NAME = 'travelnest'
-        BACKEND_IMAGE = "${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}-backend-dev"
-        FRONTEND_IMAGE = "${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}-frontend-dev"
+        IMAGE = "${DOCKER_REGISTRY}/${DOCKER_USERNAME}/${APP_NAME}"
+
         
         // Environment variables
         NODE_ENV = 'production'
@@ -95,24 +95,10 @@ pipeline {
                         dir('backend') {
                             echo '🐳 Building backend Docker image...'
                             script {
-                                def backendImage = docker.build("${BACKEND_IMAGE}:${BUILD_NUMBER}")
+                                def backendImage = docker.build("${IMAGE}:${BUILD_NUMBER}")
                                 docker.withRegistry('https://' + DOCKER_REGISTRY, DOCKER_CREDENTIALS_ID) {
                                     backendImage.push("${BUILD_NUMBER}")
                                     backendImage.push("latest")
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('Build Frontend Image') {
-                    steps {
-                        dir('frontend') {
-                            echo '🐳 Building frontend Docker image...'
-                            script {
-                                def frontendImage = docker.build("${FRONTEND_IMAGE}:${BUILD_NUMBER}")
-                                docker.withRegistry('https://' + DOCKER_REGISTRY, DOCKER_CREDENTIALS_ID) {
-                                    frontendImage.push("${BUILD_NUMBER}")
-                                    frontendImage.push("latest")
                                 }
                             }
                         }
