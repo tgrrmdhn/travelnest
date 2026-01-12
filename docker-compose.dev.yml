@@ -32,7 +32,7 @@ services:
       - backend-uploads:/app/uploads
     networks:
       - travelnest-network
-    command: npm run dev
+    command: node server.js
 
   # Frontend Service (Development)
   frontend:
@@ -56,10 +56,69 @@ services:
       - backend
     command: npm run dev -- --host
 
+  # cAdvisor for container metrics (Development)
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: travelnest-cadvisor-dev
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - travelnest-network
+
+  # Prometheus server (Development)
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: travelnest-prometheus-dev
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"
+    depends_on:
+      - backend
+      - cadvisor
+    networks:
+      - travelnest-network
+
+  # Grafana (Development)
+  grafana:
+    image: grafana/grafana:10.4.5
+    container_name: travelnest-grafana-dev
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+    networks:
+      - travelnest-network
+
 volumes:
   backend-db:
     driver: local
   backend-uploads:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
     driver: local
 
 networks:
